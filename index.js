@@ -1,168 +1,121 @@
-const {initializeDatabase} = require("./db/db.connect");
+const { initializeDatabase } = require("./db/db.connect");
 const express = require("express");
-const app = express()
 const Book = require("./models/books.models");
+
+const app = express();
 app.use(express.json());
-initializeDatabase()
 
-const newBook = {
-  title: "Lean In",
-  author: "Sheryl Sandberg",
-  publishedYear: 2012,
-  genre: ["Non-fiction", "Business"],
-  language: "English",
-  country: "United States",
-  rating: 4.1,
-  summary: "A book about empowering women in the workplace and achieving leadership roles.",
-  coverImageUrl: "https://example.com/lean_in.jpg"
-};
+initializeDatabase();
 
-const newBookData = {
-  title: "Shoe Dog",
-  author: "Phil Knight",
-  publishedYear: 2016,
-  genre: ["Autobiography", "Business"],
-  language: "English",
-  country: "United States",
-  rating: 4.5,
-  summary: "An inspiring memoir by the co-founder of Nike, detailing the journey of building a global athletic brand.",
-  coverImageUrl: "https://example.com/shoe_dog.jpg"
-};
+// 1. Add a new book
+app.post("/add", async (req, res) => {
+  try {
+    const book = new Book(req.body);
+    const savedBook = await book.save();
+    res.status(201).json(savedBook);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
-async function createNewBook(newBookData){
-    try{
-        const book = new Book(newBookData);
-        const saveBook = await book.save();
-    }
-    catch(error){
-        throw error;
-    }
-}
+// 2. Get all books
+app.get("/all", async (req, res) => {
+  try {
+    const books = await Book.find();
+    res.json(books);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-app.get("/books", (req,res) => (
-    res.send("Hello from Express Server.")
-))
+// 3. Get book by title
+app.get("/title/:title", async (req, res) => {
+  try {
+    const book = await Book.findOne({ title: req.params.title });
+    if (!book) return res.status(404).json({ error: "Not found" });
+    res.json(book);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-createNewBook(newBookData);
+// 4. Get books by author
+app.get("/author/:author", async (req, res) => {
+  try {
+    const books = await Book.find({ author: req.params.author });
+    if (!books.length) return res.status(404).json({ error: "No books found" });
+    res.json(books);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-async function createBook(newBook){
-    try{
-        const book = new Book(newBook);
-        const saveMovie = await book.save();
-    }
-    catch(error){
-        throw error;
-    }
-}
+// 5. Get all Business genre books
+app.get("/business", async (req, res) => {
+  try {
+    const books = await Book.find({ genre: "Business" });
+    res.json(books);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-createBook(newBook);
+// 6. Get all books from 2012
+app.get("/year2012", async (req, res) => {
+  try {
+    const books = await Book.find({ publishedYear: 2012 });
+    res.json(books);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-async function readAllBooks(){
-    try{
-        const allBooks = await Book.find()
-        console.log(allBooks)
-    }
-    catch(error){
-        throw error;
-    }
-}
+// 7. Update rating by ID
+app.patch("/update-rating/:id", async (req, res) => {
+  try {
+    const book = await Book.findByIdAndUpdate(
+      req.params.id,
+      { rating: req.body.rating },
+      { new: true }
+    );
+    if (!book) return res.status(404).json({ error: "Book does not exist" });
+    res.json(book);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-readAllBooks();
+// 8. Update book by title
+app.patch("/update/:title", async (req, res) => {
+  try {
+    const updatedBook = await Book.findOneAndUpdate(
+      { title: req.params.title },
+      req.body,
+      { new: true }
+    );
+    if (!updatedBook) return res.status(404).json({ error: "Book does not exist" });
+    res.json(updatedBook);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-async function readByTitle(bookTitle){
-    try{
-        const readByTitle = await Book.findOne({title: bookTitle});
-        console.log(readByTitle);
-    }
-    catch(error){
-        throw error;
-    }
-}
-readByTitle("Lean In");
+// 9. Delete book by ID
+app.delete("/delete/:id", async (req, res) => {
+  try {
+    const deletedBook = await Book.findByIdAndDelete(req.params.id);
+    if (!deletedBook) return res.status(404).json({ error: "Book not found" });
+    res.json({ message: "Deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-async function readByAuthor(bookAuthor){
-    try{
-        const author = await Book.findOne({author: bookAuthor});
-        console.log(author);
-    }
-    catch(error){
-        throw error;
-    }
-}
+app.get("/", (req, res) => {
+  res.send("Hello from Express Server.");
+});
 
-readByAuthor("Phil Knight");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-async function findByGenre(bookByGenre){
-    try{
-        const genre = await Book.find({genre: bookByGenre});
-        console.log(genre);
-    }
-    catch(error){
-        throw error;
-    }
-}
-
-findByGenre("Business");
-
-async function findByYear(bookByYear){
-    try{
-        const year = await Book.find({publishedYear: bookByYear});
-        console.log(year);
-    }
-    catch(error){
-        throw error;
-    }
-}
-findByYear(2012);
-
-async function findByRating(bookId,dataToUpdate){
-    try{
-        const updateMovie = await Book.findByIdAndUpdate(bookId,dataToUpdate,{new: true});
-        console.log(updateMovie);
-    }
-    catch(error){
-        console.log(`Book does not exist`, error);
-    }
-}
-findByRating("689980ed27a21a56c36ed0f2", {rating: 4.5})
-
-
-
-async function findAndUpdate(bookTitle, dataToUpdate) {
-    try {
-        const updatedBook = await Book.findOneAndUpdate(
-            { title: bookTitle },
-            dataToUpdate,
-            { new: true }
-        );
-
-        if (!updatedBook) {
-            console.log("Book does not exist");
-            return;
-        }
-
-        console.log(updatedBook);
-    } catch (error) {
-        console.error("Error updating book:", error.message);
-    }
-}
-
-findAndUpdate("Shoe Dog", { publishedYear: 2017, rating: 4.2 });
-
-
-async function deleteBookData(bookId){
-    try{
-        const deleteBook = await Book.findOneAndDelete({_id: bookId});
-        console.log(deleteBook);
-    }
-    catch(error){
-        console.log(`Book not found`);
-    }
-}
-
-deleteBookData("689980ed27a21a56c36ed0f3");
-
-const PORT = 3000
-app.listen(PORT,() => {
-    console.log(`Running on port ${PORT}`);
-})
+module.exports = app; // for Vercel
